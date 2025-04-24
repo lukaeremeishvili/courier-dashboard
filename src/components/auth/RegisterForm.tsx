@@ -4,8 +4,8 @@ import { useState, useRef } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { isEmailUnique } from "../../lib/validate";
-import axios from "axios";
-import Image from "next/image"; 
+import { supabase } from "../../lib/supabase";
+import Image from "next/image";
 
 const RegisterForm = () => {
   const { handleRegister } = useAuth();
@@ -21,7 +21,7 @@ const RegisterForm = () => {
   const [image, setImage] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState<string>("");
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null); 
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files) return;
@@ -53,33 +53,26 @@ const RegisterForm = () => {
 
     let imageUrlToSend = "";
     if (image) {
-      const uploadData = new FormData();
-      uploadData.append("file", image);
-      uploadData.append(
-        "upload_preset",
-        process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!
-      );
-      uploadData.append("api_key", process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY!);
+      const fileExt = image.name.split(".").pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
 
-      try {
-        const response = await axios.post(
-          process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_URL!,
-          uploadData,
-          {
-            headers: { "Content-Type": "multipart/form-data" },
-          }
-        );
+      const { data, error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, image);
+        console.log(`Image uploaded to: ${data?.path}`);
 
-        if (response.data.secure_url) {
-          imageUrlToSend = response.data.secure_url;
-        } else {
-          throw new Error("Cloudinary did not return a valid image URL.");
-        }
-      } catch (error) {
-        console.error("Error uploading image:", error);
+      if (uploadError) {
+        console.error("Error uploading image:", uploadError);
         setError("Error uploading image. Please try again.");
         return;
       }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      imageUrlToSend = publicUrlData?.publicUrl || "";
     }
 
     const success = await handleRegister({
@@ -104,7 +97,6 @@ const RegisterForm = () => {
       fileInputRef.current.click();
     }
   };
-
 
   return (
     <form
@@ -173,12 +165,12 @@ const RegisterForm = () => {
         <button
           type="button"
           className="mb-3 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm"
-          onClick={handleButtonClick} 
+          onClick={handleButtonClick}
         >
           Upload Image
         </button>
         <input
-          ref={fileInputRef} 
+          ref={fileInputRef}
           id="file-upload"
           type="file"
           accept="image/*"
@@ -187,7 +179,6 @@ const RegisterForm = () => {
         />
       </label>
 
-        
       {imageUrl && (
         <div className="mb-4">
           <Image
