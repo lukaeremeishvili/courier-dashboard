@@ -4,72 +4,121 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { TimeSlot, Booking } from '@/types'
 import { supabase } from '@/lib/supabase'
+// Import useRouter if you want to redirect unauthorized users
+// import { useRouter } from 'next/navigation';
 
 export default function UserDashboard() {
-  const { user, signOut } = useAuth()
+  // Get loading state from context as well
+  const { user, signOut, loading: authLoading } = useAuth()
   const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
-  const [loading, setLoading] = useState(true)
+  // Combine auth loading with dashboard-specific loading
+  const [dashboardLoading, setDashboardLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
+  // const router = useRouter(); // Uncomment if redirecting
 
   useEffect(() => {
+    setError(''); // Clear errors on user/day change
     if (user) {
-      fetchAvailableTimeSlots()
-      fetchBookings()
+      // Reset dashboard loading when user is available
+      setDashboardLoading(true);
+      console.log("User detected, fetching dashboard data...");
+      Promise.all([fetchAvailableTimeSlots(), fetchBookings()])
+        .catch((err) => {
+             console.error("Error fetching dashboard data:", err);
+             // Keep error state set by individual functions
+        })
+        .finally(() => {
+           console.log("Dashboard data fetching complete.");
+           setDashboardLoading(false);
+        });
+    } else if (!authLoading) {
+      // If auth is not loading and there's no user, stop dashboard loading
+      console.log("Auth loading finished, no user found.");
+      setDashboardLoading(false);
+      // Uncomment to redirect if no user after auth loading finishes
+      // router.push('/login');
     }
-  }, [user, selectedDay])
+    // Depend on user and selectedDay for refetching data
+  }, [user, selectedDay, authLoading]) // Add authLoading dependency
 
-  const fetchAvailableTimeSlots = async () => {
+  const fetchAvailableTimeSlots = async (): Promise<void> => {
+    console.log("Fetching available time slots...");
     try {
       let query = supabase
         .from('time_slots')
+        // Restore nested select for couriers
         .select('*, couriers(full_name, phone)')
         .eq('is_booked', false)
 
       if (selectedDay !== null) {
+        console.log(`Filtering time slots by day: ${selectedDay}`);
         query = query.eq('day_of_week', selectedDay)
+      } else {
+         console.log("Fetching time slots for all days.");
       }
 
-      const { data, error } = await query.order('day_of_week', { ascending: true })
+      const { data, error: queryError } = await query.order('day_of_week', { ascending: true })
         .order('start_time', { ascending: true })
 
-      if (error) throw error
+      if (queryError) throw queryError
+      console.log(`Fetched ${data?.length || 0} available time slots.`);
       setAvailableTimeSlots(data || [])
     } catch (err) {
+      console.error('Error fetching available time slots:', err);
       setError('Failed to fetch available time slots')
-      console.error(err)
-    } finally {
-      setLoading(false)
+      setAvailableTimeSlots([]) // Clear on error
+      // Re-throw error if you want Promise.all to catch it explicitly
+      // throw err;
     }
   }
 
-  const fetchBookings = async () => {
+  const fetchBookings = async (): Promise<void> => {
+    console.log("Fetching bookings...");
     try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('*, time_slots(*, couriers(full_name, phone))')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false })
+       if (!user?.id) {
+           console.log("fetchBookings skipped: user ID not available yet.");
+           setBookings([])
+           return;
+       }
+       console.log(`Fetching bookings for user ID: ${user.id}`);
+       const { data, error: queryError } = await supabase
+         .from('bookings')
+         // Restore nested select for time_slots and couriers
+         .select('*, time_slots(*, couriers(full_name, phone))')
+         .eq('user_id', user.id)
+         .order('created_at', { ascending: false })
 
-      if (error) throw error
-      setBookings(data || [])
+       if (queryError) throw queryError
+       console.log(`Fetched ${data?.length || 0} bookings.`);
+       setBookings(data || [])
     } catch (err) {
+      console.error('Error fetching bookings:', err);
       setError('Failed to fetch bookings')
-      console.error(err)
+      setBookings([]) // Clear on error
+      // Re-throw error if you want Promise.all to catch it explicitly
+      // throw err;
     }
   }
 
   const handleBookTimeSlot = async (timeSlotId: string) => {
+    if (!user?.id) {
+        setError("Cannot book: User not logged in.");
+        return;
+    }
+    console.log(`Attempting to book time slot: ${timeSlotId} for user: ${user.id}`);
+    setError(''); // Clear previous errors
     try {
-      const { error } = await supabase.from('bookings').insert([
+      const { error: insertError } = await supabase.from('bookings').insert([
         {
-          user_id: user?.id,
+          user_id: user.id, // Use user.id directly
           time_slot_id: timeSlotId,
         },
       ])
 
-      if (error) throw error
+      if (insertError) throw insertError
+      console.log("Booking successful, updating time slot status...");
 
       // Update the time slot as booked
       const { error: updateError } = await supabase
@@ -78,23 +127,28 @@ export default function UserDashboard() {
         .eq('id', timeSlotId)
 
       if (updateError) throw updateError
+      console.log("Time slot status updated. Refreshing data...");
 
-      fetchAvailableTimeSlots()
-      fetchBookings()
+      // Refresh data
+      setDashboardLoading(true);
+      Promise.all([fetchAvailableTimeSlots(), fetchBookings()]).finally(() => setDashboardLoading(false));
     } catch (err) {
+      console.error('Failed to book time slot:', err);
       setError('Failed to book time slot')
-      console.error(err)
     }
   }
 
   const handleCancelBooking = async (bookingId: string, timeSlotId: string) => {
+     console.log(`Attempting to cancel booking: ${bookingId} (time slot: ${timeSlotId})`);
+     setError(''); // Clear previous errors
     try {
-      const { error } = await supabase
+      const { error: deleteError } = await supabase
         .from('bookings')
         .delete()
         .eq('id', bookingId)
 
-      if (error) throw error
+      if (deleteError) throw deleteError
+      console.log("Booking cancelled, updating time slot status...");
 
       // Update the time slot as available
       const { error: updateError } = await supabase
@@ -103,19 +157,43 @@ export default function UserDashboard() {
         .eq('id', timeSlotId)
 
       if (updateError) throw updateError
+      console.log("Time slot status updated. Refreshing data...");
 
-      fetchAvailableTimeSlots()
-      fetchBookings()
+      // Refresh data
+      setDashboardLoading(true);
+      Promise.all([fetchAvailableTimeSlots(), fetchBookings()]).finally(() => setDashboardLoading(false));
     } catch (err) {
+      console.error('Failed to cancel booking:', err);
       setError('Failed to cancel booking')
-      console.error(err)
     }
   }
 
-  if (!user || user.role !== 'user') {
-    return <div>Unauthorized</div>
+  // Show loading indicator while auth context is loading OR dashboard data is loading
+  if (authLoading || dashboardLoading) {
+     console.log(`Dashboard loading state: authLoading=${authLoading}, dashboardLoading=${dashboardLoading}`);
+     return (
+        <div className="min-h-screen flex items-center justify-center">
+             <div>Loading dashboard...</div>
+        </div>
+     );
   }
 
+  // Check for user *after* loading states are false
+  if (!user || user.role !== 'user') {
+    console.log("Unauthorized access attempt or user role mismatch.");
+    // Optionally redirect to login if preferred
+    // useEffect(() => { if (!authLoading && !user) router.push('/login'); }, [authLoading, user, router]);
+    return (
+       <div className="min-h-screen flex items-center justify-center">
+         <div>Unauthorized. You might need to log in or have the correct role.</div>
+         {/* Optionally add a button to go to login */}
+         {/* <button onClick={() => router.push('/login')}>Go to Login</button> */}
+       </div>
+    )
+  }
+
+  // --- Render actual dashboard content below ---
+  console.log("Rendering user dashboard content.");
   return (
     <div className="min-h-screen bg-gray-100">
       <nav className="bg-white shadow-sm">
@@ -127,6 +205,8 @@ export default function UserDashboard() {
               </div>
             </div>
             <div className="flex items-center">
+              {/* Display user email or name if available */}
+              {user.email && <span className="mr-4 text-sm text-gray-600">{user.email}</span>}
               <button
                 onClick={signOut}
                 className="ml-4 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
@@ -141,8 +221,9 @@ export default function UserDashboard() {
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-              {error}
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+              <strong className="font-bold">Error:</strong>
+              <span className="block sm:inline"> {error}</span>
             </div>
           )}
 
@@ -154,7 +235,9 @@ export default function UserDashboard() {
                   Available Time Slots
                 </h3>
                 <div className="mt-4">
+                  <label htmlFor="day-select" className="sr-only">Filter by day</label>
                   <select
+                    id="day-select"
                     value={selectedDay === null ? '' : selectedDay}
                     onChange={(e) =>
                       setSelectedDay(e.target.value ? parseInt(e.target.value) : null)
@@ -172,30 +255,32 @@ export default function UserDashboard() {
                   </select>
                 </div>
               </div>
-              <div className="border-t border-gray-200">
+              <div className="border-t border-gray-200 h-96 overflow-y-auto">
                 <ul className="divide-y divide-gray-200">
+                  {availableTimeSlots.length === 0 && <li className="px-4 py-4 text-sm text-gray-500">No available slots found for the selected day.</li>}
                   {availableTimeSlots.map((slot) => (
                     <li key={slot.id} className="px-4 py-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-sm font-medium text-indigo-600">
                             {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][
                               slot.day_of_week
                             ]}
                           </p>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-gray-900">
                             {slot.start_time} - {slot.end_time}
                           </p>
                           <p className="text-sm text-gray-500">
-                            Courier: {slot.couriers?.full_name}
+                            Courier: {slot.couriers?.full_name || 'N/A'}
                           </p>
                           <p className="text-sm text-gray-500">
-                            Phone: {slot.couriers?.phone}
+                            Phone: {slot.couriers?.phone || 'N/A'}
                           </p>
                         </div>
                         <button
                           onClick={() => handleBookTimeSlot(slot.id)}
-                          className="ml-4 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+                          disabled={dashboardLoading} // Disable button while loading
+                          className="ml-4 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Book
                         </button>
@@ -213,36 +298,42 @@ export default function UserDashboard() {
                   My Bookings
                 </h3>
               </div>
-              <div className="border-t border-gray-200">
+              <div className="border-t border-gray-200 h-96 overflow-y-auto">
                 <ul className="divide-y divide-gray-200">
+                  {bookings.length === 0 && <li className="px-4 py-4 text-sm text-gray-500">You have no bookings.</li>}
                   {bookings.map((booking) => (
-                    booking.time_slots && (
+                    // Ensure time_slots is available before rendering
+                    booking.time_slots ? ( // Re-enable check
                       <li key={booking.id} className="px-4 py-4">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-gray-900">
+                            {/* Restore detailed booking info */}
+                            <p className="text-sm font-medium text-indigo-600">
                               {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][
                                 booking.time_slots.day_of_week
                               ]}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-gray-900">
                               {booking.time_slots.start_time} - {booking.time_slots.end_time}
                             </p>
                             <p className="text-sm text-gray-500">
-                              Courier: {booking.time_slots.couriers?.full_name}
+                              Courier: {booking.time_slots.couriers?.full_name || 'N/A'}
                             </p>
                             <p className="text-sm text-gray-500">
-                              Phone: {booking.time_slots.couriers?.phone}
+                              Phone: {booking.time_slots.couriers?.phone || 'N/A'}
                             </p>
                           </div>
                           <button
                             onClick={() => handleCancelBooking(booking.id, booking.time_slot_id)}
-                            className="ml-4 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+                            disabled={dashboardLoading}
+                            className="ml-4 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Cancel
                           </button>
                         </div>
                       </li>
+                    ) : (
+                       <li key={booking.id} className="px-4 py-4 text-sm text-red-500">Booking data incomplete (missing time slot info).</li>
                     )
                   ))}
                 </ul>
@@ -252,5 +343,5 @@ export default function UserDashboard() {
         </div>
       </main>
     </div>
-  )
+  );
 } 

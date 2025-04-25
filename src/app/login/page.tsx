@@ -14,11 +14,25 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    console.log("Login handleSubmit called with email:", email);
     try {
-      await signIn(email, password);
-      router.push("/");
+      console.log("Attempting to call signIn...");
+      const loggedInUser = await signIn(email, password);
+      console.log("signIn completed. User returned:", loggedInUser);
+
+      if (loggedInUser && loggedInUser.role) {
+        console.log(`User role found: ${loggedInUser.role}. Redirecting via middleware (pushing to /)...`);
+        // Push to root, let middleware handle the dashboard redirect
+        router.push(`/`);
+      } else {
+        console.error("User or role not found after successful login attempt.");
+        setError("Login successful, but could not determine user role. Please contact support.");
+      }
+
     } catch (error) {
-      setError("Invalid email or password");
+      console.error("Login handleSubmit error:", error);
+      setError("Invalid email or password. Check console for details.");
     }
   };
 

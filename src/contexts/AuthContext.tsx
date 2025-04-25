@@ -8,7 +8,7 @@ import { Session, User as SupabaseUser } from '@supabase/supabase-js'
 interface AuthContextType {
   user: User | null
   loading: boolean
-  signIn: (email: string, password: string) => Promise<void>
+  signIn: (email: string, password: string) => Promise<User | null>
   signUp: (email: string, password: string, fullName: string, phone: string, role: UserRole) => Promise<{ user: SupabaseUser | null }>
   signOut: () => Promise<void>
 }
@@ -41,7 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const fetchUser = async (userId: string) => {
+  const fetchUser = async (userId: string): Promise<User | null> => {
+    console.log(`fetchUser called for userId: ${userId}`);
     try {
       const { data, error } = await supabase
         .from('users')
@@ -50,23 +51,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single()
 
       if (error) throw error
+      console.log("Fetched user data:", data);
       setUser(data)
+      return data
     } catch (error) {
       console.error('Error fetching user:', error)
       setUser(null)
+      return null
     }
   }
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string): Promise<User | null> => {
+    console.log(`signIn called with email: ${email}`);
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
 
-    if (error) throw error
+    console.log("Supabase signInWithPassword response:", { data, error });
+
+    if (error) {
+        console.error("Supabase signInWithPassword error:", error);
+        throw error
+    }
 
     if (data.user) {
-      await fetchUser(data.user.id)
+      console.log("User authenticated, attempting to fetch user data...");
+      const fetchedUser = await fetchUser(data.user.id)
+      console.log("fetchUser call completed in signIn");
+      return fetchedUser
+    } else {
+        console.log("No user data returned from signInWithPassword, but no error either.");
+        return null
     }
   }
 
