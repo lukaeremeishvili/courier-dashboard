@@ -47,14 +47,12 @@ export const useAuth = () => {
   const handleRegister = async (userData: Omit<User, 'id'> & { password: string }): Promise<boolean> => {
     try {
       const newUser = await register(userData);
-
       if (!newUser) {
         setError('Registration failed. Please try again.');
         return false;
       }
 
-      setUser(newUser);
-      localStorage.setItem('userData', JSON.stringify(newUser));
+      setUser(null); 
       return true;
     } catch (err) {
       console.error('Error during registration:', err);

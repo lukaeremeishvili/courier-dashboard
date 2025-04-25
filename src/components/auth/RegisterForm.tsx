@@ -91,7 +91,7 @@ const RegisterForm = () => {
     });
 
     if (success) {
-      router.push("/dashboard");
+      router.push("/login");
     } else {
       setError("Registration failed. Please try again.");
     }
