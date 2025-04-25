@@ -1,26 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { useRouter } from "next/navigation";
 
 const LoginForm = () => {
-  const { handleLogin } = useAuth();
+  const { handleLogin, user } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === "admin") {
+        router.push("/dashboard/admin");
+      } else if (user.role === "courier") {
+        router.push("/dashboard/courier");
+      } else {
+        router.push("/dashboard/user");
+      }
+    }
+  }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
 
+    if (!email || !password) {
+      setError("Email and password are required.");
+      return;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setError("Please enter a valid email.");
+      return;
+    }
+
+    setLoading(true);
     const success = await handleLogin(email, password);
 
     if (success) {
       router.push("/dashboard");
     } else {
-      setError("Invalid credentials. Please try again.");
+      setError("Invalid Password or Email. Please try again.");
     }
+    setLoading(false);
   };
 
   return (
@@ -51,9 +77,10 @@ const LoginForm = () => {
 
       <button
         type="submit"
-        className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+        className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 cursor-pointer"
+        disabled={loading}
       >
-        Login
+        {loading ? "Logging in..." : "Login"}
       </button>
     </form>
   );

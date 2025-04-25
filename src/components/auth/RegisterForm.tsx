@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { isEmailUnique } from "../../lib/validate";
 import { supabase } from "../../lib/supabase";
 import Image from "next/image";
 
 const RegisterForm = () => {
-  const { handleRegister } = useAuth();
+  const { handleRegister, user } = useAuth();
   const router = useRouter();
 
   const [name, setName] = useState("");
@@ -22,6 +21,18 @@ const RegisterForm = () => {
   const [imageUrl, setImageUrl] = useState<string>("");
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === "admin") {
+        router.push("/dashboard/admin");
+      } else if (user.role === "courier") {
+        router.push("/dashboard/courier");
+      } else {
+        router.push("/dashboard/user");
+      }
+    }
+  }, [user, router]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files) return;
@@ -44,29 +55,23 @@ const RegisterForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const emailUnique = await isEmailUnique(email);
-    if (!emailUnique) {
-      setError("Email is already in use.");
-      return;
-    }
-
     let imageUrlToSend = "";
     if (image) {
       const fileExt = image.name.split(".").pop();
       const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const filePath = `${fileName}`;
 
       const { data, error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(filePath, image);
-        console.log(`Image uploaded to: ${data?.path}`);
 
       if (uploadError) {
         console.error("Error uploading image:", uploadError);
         setError("Error uploading image. Please try again.");
         return;
       }
+
+      console.log("Uploaded file data:", data);
 
       const { data: publicUrlData } = supabase.storage
         .from("avatars")

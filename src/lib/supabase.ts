@@ -1,7 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(
-    process.env.NEXT_AUTH_SUPABASE_URL as string,
-    process.env.NEXT_AUTH_SUPABASE_API_KEY as string,
-)
+
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+    global: {
+        headers: {
+            'x-client-info': 'my-app',
+        },
+    },
+});

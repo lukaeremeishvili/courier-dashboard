@@ -1,49 +1,42 @@
-import { useState, useEffect } from 'react';
-import { login, logout, register, getCurrentUser } from '../lib/auth';
+"use client";
+import { useEffect, useState } from 'react';
 import { User } from '../interfaces/user.interface';
+import { login, register } from '../lib/auth';
+
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true); 
-  const [error, setError] = useState<string | null>(null); 
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkSession = () => {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        fetchCurrentUser();
+      const storedUser = localStorage.getItem('userData');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
       } else {
-        setLoading(false); 
         setUser(null);
       }
+      setLoading(false);
     };
 
-    const fetchCurrentUser = async () => {
-      try {
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
-      } catch (err) {
-        console.error('Error fetching user:', err);
-        setError('Failed to fetch current user. Please try again.');
-        setUser(null); 
-      } finally {
-        setLoading(false); 
-      }
-    };
-
-    checkSession(); 
+    checkSession();
   }, []);
 
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     try {
-      const loggedInUser = await login(email, password);
-      if (loggedInUser) {
-        setUser(loggedInUser);
-        return true;
-      } else {
-        setError('Invalid credentials. Please try again.');
+      const userData = await login(email, password);
+
+      if (!userData) {
+        setError('Invalid credentials');
+        setUser(null);
         return false;
       }
+
+      setUser(userData);
+      localStorage.setItem('userData', JSON.stringify(userData));
+      document.cookie = `userData=${encodeURIComponent(JSON.stringify(userData))}; path=/`;
+      return true;
     } catch (err) {
       console.error('Error during login:', err);
       setError('Login failed. Please try again.');
@@ -53,14 +46,16 @@ export const useAuth = () => {
 
   const handleRegister = async (userData: Omit<User, 'id'> & { password: string }): Promise<boolean> => {
     try {
-      const registeredUser = await register(userData);
-      if (registeredUser) {
-        setUser(registeredUser);
-        return true;
-      } else {
+      const newUser = await register(userData);
+
+      if (!newUser) {
         setError('Registration failed. Please try again.');
         return false;
       }
+
+      setUser(newUser);
+      localStorage.setItem('userData', JSON.stringify(newUser));
+      return true;
     } catch (err) {
       console.error('Error during registration:', err);
       setError('Registration failed. Please try again.');
@@ -70,9 +65,9 @@ export const useAuth = () => {
 
   const handleLogout = async () => {
     try {
-      await logout();
       setUser(null);
-      localStorage.removeItem('authToken');
+      localStorage.removeItem('userData');
+      document.cookie = 'userData=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
     } catch (err) {
       console.error('Error logging out:', err);
       setError('Error logging out. Please try again.');
@@ -85,6 +80,6 @@ export const useAuth = () => {
     handleRegister,
     handleLogout,
     loading,
-    error, 
+    error,
   };
 };
