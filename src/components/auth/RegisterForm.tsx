@@ -81,13 +81,13 @@ const RegisterForm = () => {
     }
 
     const success = await handleRegister({
-      name,
+      full_name: name,
       phone,
       role,
       address,
       email,
       password,
-      profileImage: imageUrlToSend,
+      profile_image: imageUrlToSend,
     });
 
     if (success) {
@@ -185,7 +185,7 @@ const RegisterForm = () => {
       </label>
 
       {imageUrl && (
-        <div className="mb-4">
+        <div className="mb-4 relative">
           <Image
             src={imageUrl}
             alt="Preview"
@@ -194,6 +194,16 @@ const RegisterForm = () => {
             className="object-cover rounded-md"
             style={{ width: "auto", height: "auto" }}
           />
+          <button
+            type="button"
+            onClick={() => {
+              setImage(null);
+              setImageUrl("");
+            }}
+            className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+          >
+            ✖
+          </button>
         </div>
       )}
 

@@ -3,26 +3,35 @@ import { User } from '../interfaces/user.interface';
 
 export const login = async (email: string, password: string): Promise<User | null> => {
     try {
-        const { data, error } = await supabase
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
+
+        if (authError || !authData.user) {
+            console.error('Invalid credentials', authError);
+            return null;
+        }
+
+        const { data: userProfileData, error: profileError } = await supabase
             .from('users')
             .select('*')
-            .eq('email', email)
-            .eq('password', password) 
+            .eq('id', authData.user.id)
             .single();
 
-        if (error || !data) {
-            console.error('Invalid credentials', error);
+        if (profileError) {
+            console.error('Error fetching user profile:', profileError);
             return null;
         }
 
         const user: User = {
-            id: data.id,
-            name: data.name,
-            email: data.email,
-            phone: data.phone,
-            address: data.address,
-            role: data.role,
-            profileImage: data.profile_image,
+            id: userProfileData.id,
+            full_name: userProfileData.full_name,
+            email: userProfileData.email,
+            phone: userProfileData.phone,
+            address: userProfileData.address,
+            role: userProfileData.role,
+            profile_image: userProfileData.profile_image,
         };
 
         return user;
@@ -31,37 +40,47 @@ export const login = async (email: string, password: string): Promise<User | nul
         return null;
     }
 };
-
 export const register = async (userData: Omit<User, 'id'> & { password: string }): Promise<User | null> => {
     try {
-        const { data, error } = await supabase
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: userData.email,
+            password: userData.password,
+        });
+
+        if (authError || !authData.user) {
+            console.error('Error signing up:', authError);
+            return null;
+        }
+
+        const { data: userProfileData, error: profileError } = await supabase
             .from('users')
             .insert([
                 {
-                    name: userData.name,
+                    id: authData.user.id,
+                    full_name: userData.full_name,
                     phone: userData.phone,
                     role: userData.role,
                     address: userData.address,
                     email: userData.email,
-                    password: userData.password,
-                    profile_image: userData.profileImage,
+                    profile_image: userData.profile_image,
                 },
             ])
-            .select('*');
+            .select('*')
+            .single();
 
-        if (error) {
-            console.error('Error during registration:', error);
+        if (profileError) {
+            console.error('Error inserting user profile:', profileError);
             return null;
         }
 
         const newUser: User = {
-            id: data![0].id,
-            name: data![0].name,
-            email: data![0].email,
-            phone: data![0].phone,
-            address: data![0].address,
-            role: data![0].role,
-            profileImage: data![0].profile_image,
+            id: userProfileData.id,
+            full_name: userProfileData.full_name,
+            email: userProfileData.email,
+            phone: userProfileData.phone,
+            address: userProfileData.address,
+            role: userProfileData.role,
+            profile_image: userProfileData.profile_image,
         };
 
         return newUser;
@@ -70,6 +89,7 @@ export const register = async (userData: Omit<User, 'id'> & { password: string }
         return null;
     }
 };
+
 
 export const getCurrentUser = async (): Promise<User | null> => {
     try {
@@ -91,12 +111,12 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
         const user: User = {
             id: data.user.id,
-            name: userProfileResponse.data!.name,
+            full_name: userProfileResponse.data!.full_name,
             email: userProfileResponse.data!.email,
             phone: userProfileResponse.data!.phone,
             address: userProfileResponse.data!.address,
             role: userProfileResponse.data!.role,
-            profileImage: userProfileResponse.data!.profile_image,
+            profile_image: userProfileResponse.data!.profile_image,
         };
 
         return user;
