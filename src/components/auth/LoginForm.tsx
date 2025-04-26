@@ -41,12 +41,14 @@ const LoginForm = () => {
     setLoading(true);
     const success = await handleLogin(email, password);
 
-    if (success) {
-      router.push("/dashboard");
-    } else {
+    if (!success) {
       setError("Invalid Password or Email. Please try again.");
     }
     setLoading(false);
+  };
+
+  const handleRegisterRedirect = () => {
+    router.push("/register");
   };
 
   return (
@@ -77,10 +79,18 @@ const LoginForm = () => {
 
       <button
         type="submit"
-        className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 cursor-pointer"
+        className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 cursor-pointer mb-4"
         disabled={loading}
       >
         {loading ? "Logging in..." : "Login"}
+      </button>
+
+      <button
+        type="button"
+        onClick={handleRegisterRedirect}
+        className="w-full py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 cursor-pointer"
+      >
+        Register
       </button>
     </form>
   );
