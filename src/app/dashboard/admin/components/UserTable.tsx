@@ -1,13 +1,12 @@
 import React from 'react';
-import { User } from '@/interfaces/user.interface'; // Adjust path if needed
+import { User } from '@/interfaces/user.interface';
 
 interface UserTableProps {
   users: User[];
-  // Add props for actions like onDelete, onEdit later if needed
-  // onDeleteUser?: (userId: string) => void;
+  
 }
 
-const UserTable: React.FC<UserTableProps> = ({ users /*, onDeleteUser*/ }) => {
+const UserTable: React.FC<UserTableProps> = ({ users}) => {
   if (!users || users.length === 0) {
     return <p>No users found.</p>;
   }
@@ -29,10 +28,7 @@ const UserTable: React.FC<UserTableProps> = ({ users /*, onDeleteUser*/ }) => {
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Role
             </th>
-            {/* Add header for Actions later */}
-            {/* <th scope="col" className="relative px-6 py-3">
-              <span className="sr-only">Actions</span>
-            </th> */}
+           
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
@@ -58,10 +54,7 @@ const UserTable: React.FC<UserTableProps> = ({ users /*, onDeleteUser*/ }) => {
                   {user.role}
                 </span>
               </td>
-              {/* Add actions cell later */}
-              {/* <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button onClick={() => onDeleteUser?.(user.id)} className="text-red-600 hover:text-red-900">Delete</button>
-              </td> */}
+              
             </tr>
           ))}
         </tbody>

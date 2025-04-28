@@ -1,19 +1,19 @@
-'use client'
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/lib/supabase";
+import { User } from "@/interfaces/user.interface";
 
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase'; // Adjust path if needed
-import { User } from '@/interfaces/user.interface'; // Adjust path if needed
-
-type FilterType = 'all' | 'user' | 'courier';
+type FilterType = "all" | "user" | "courier";
 
 interface UseAdminUsersDataReturn {
   users: User[];
   loading: boolean;
   error: string | null;
-  fetchFilteredData: (filter: FilterType) => Promise<void>; // Expose fetch function if manual refresh is needed
+  fetchFilteredData: (filter: FilterType) => Promise<void>;
 }
 
-export function useAdminUsersData(initialFilter: FilterType): UseAdminUsersDataReturn {
+export function useAdminUsersData(
+  initialFilter: FilterType
+): UseAdminUsersDataReturn {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,37 +23,31 @@ export function useAdminUsersData(initialFilter: FilterType): UseAdminUsersDataR
     setError(null);
     try {
       let query = supabase
-        .from('users')
-        .select('*')
-        .neq('role', 'admin') // Exclude admins
-        .limit(10) 
-        .order('created_at', { ascending: false });
+        .from("users")
+        .select("*")
+        .neq("role", "admin")
+        .limit(10)
+        .order("created_at", { ascending: false });
 
-      // Apply specific role filter if not 'all'
-      if (filter !== 'all') {
-        query = query.eq('role', filter);
+      if (filter !== "all") {
+        query = query.eq("role", filter);
       }
 
       const { data: usersData, error: usersError } = await query;
 
       if (usersError) throw usersError;
       setUsers(usersData || []);
-
     } catch (err: any) {
-      console.error('Error fetching admin users data:', err); // Log the specific error
-      setError('Failed to load user data.');
-      setUsers([]); // Clear users on error
+      console.error("Error fetching admin users data:", err);
+      setError("Failed to load user data.");
+      setUsers([]);
     } finally {
       setLoading(false);
     }
-  }, []); // useCallback dependency array is empty, fetch logic doesn't depend on props/state from outside
-
-  // Initial fetch and fetch on filter change (passed from outside)
-  // This effect structure might need adjustment depending on how filter state is managed in the page
-  // For now, assuming initial fetch happens based on initialFilter
+  }, []);
   useEffect(() => {
     fetchFilteredData(initialFilter);
-  }, [initialFilter, fetchFilteredData]); // Re-fetch when initialFilter changes (or hook is first called)
+  }, [initialFilter, fetchFilteredData]);
 
   return { users, loading, error, fetchFilteredData };
-} 
+}

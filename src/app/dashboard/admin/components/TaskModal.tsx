@@ -1,29 +1,22 @@
 'use client'
 
-import React, { useState } from 'react';
-// Import necessary types later (e.g., User for courier selection)
-// import { User } from '@/interfaces/user.interface';
+import React, { useState } from "react";
 
 interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // Add props for available couriers and the actual assignment function later
-  // couriers: User[];
-  // onTaskAssigned: (taskData: any) => Promise<void>;
 }
 
-const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose /*, couriers, onTaskAssigned*/ }) => {
-  // State for form fields will be added later
-  const [taskName, setTaskName] = useState('');
-  const [description, setDescription] = useState('');
-  // ... other form fields state ...
+const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose }) => {
+  const [taskName, setTaskName] = useState("");
+  const [description, setDescription] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Task assignment logic will be added here later
+
     console.log("Submitting task...", { taskName, description });
-    // await onTaskAssigned({ name: taskName, description, ... });
-    onClose(); // Close modal after submit (for now)
+
+    onClose();
   };
 
   if (!isOpen) {
@@ -34,13 +27,25 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose /*, couriers, onT
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
       <div className="relative mx-auto p-8 border w-full max-w-md shadow-lg rounded-md bg-white">
         <div className="flex justify-between items-center mb-4">
-           <h3 className="text-2xl font-semibold">Assign New Task</h3>
-           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-3xl font-light">&times;</button>
+          <h3 className="text-2xl font-semibold">Assign New Task</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-3xl font-light"
+          >
+            &times;
+          </button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Form fields will be added here */}
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+        >
           <div>
-            <label htmlFor="taskName" className="block text-sm font-medium text-gray-700">Task Name</label>
+            <label
+              htmlFor="taskName"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Task Name
+            </label>
             <input
               type="text"
               id="taskName"
@@ -52,7 +57,12 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose /*, couriers, onT
             />
           </div>
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+            <label
+              htmlFor="description"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Description
+            </label>
             <textarea
               id="description"
               rows={3}
@@ -62,7 +72,6 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose /*, couriers, onT
               placeholder="Enter task description"
             />
           </div>
-          {/* Add fields for Courier selection, Due Date, Priority etc. later */}
 
           <div className="mt-6 flex justify-end space-x-3">
             <button
@@ -86,4 +95,3 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose /*, couriers, onT
 };
 
 export default TaskModal;
-
