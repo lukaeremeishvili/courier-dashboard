@@ -1,27 +1,22 @@
-"use client";
-import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-export default function TaskList() {
-  const [tasks, setTasks] = useState([]);
+async function getTasks() {
+  const { data } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("assigned_to", "courier_id"); // შეცვალე საჭირო ID-თ
 
-  useEffect(() => {
-    const fetchTasks = async () => {
-      const { data } = await supabase
-        .from("tasks")
-        .select("*")
-        .eq("assigned_to", "courier_id"); // შეცვალე საჭირო ID-თ
+  return data;
+}
 
-      if (data) setTasks(data);
-    };
-    fetchTasks();
-  }, []);
+export default async function TaskList() {
+  const tasks = await getTasks();
 
   return (
     <div>
       <h2 className="text-xl font-semibold mb-2">Assigned Tasks</h2>
       <ul className="list-disc pl-5">
-        {tasks.map((task: any) => (
+        {tasks?.map((task: any) => (
           <li key={task.id}>
             {task.title} - {task.status}
           </li>

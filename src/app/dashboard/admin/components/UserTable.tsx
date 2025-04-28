@@ -1,17 +1,12 @@
-"use client";
-import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-export default function UserTable() {
-  const [users, setUsers] = useState([]);
+async function getUsers() {
+  const { data, error } = await supabase.from("profiles").select("*");
+  return data;
+}
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      const { data, error } = await supabase.from("profiles").select("*");
-      if (data) setUsers(data);
-    };
-    fetchUsers();
-  }, []);
+export default async function UserTable() {
+  const users = await getUsers();
 
   return (
     <div>
@@ -25,7 +20,7 @@ export default function UserTable() {
           </tr>
         </thead>
         <tbody>
-          {users.map((u: any) => (
+          {users?.map((u: any) => (
             <tr key={u.id}>
               <td className="border px-3 py-1">{u.name}</td>
               <td className="border px-3 py-1">{u.phone}</td>

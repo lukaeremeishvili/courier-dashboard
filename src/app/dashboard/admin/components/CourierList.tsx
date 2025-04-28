@@ -1,27 +1,22 @@
-"use client";
-import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-export default function CourierList() {
-  const [couriers, setCouriers] = useState([]);
+async function getCouriers() {
+  const { data } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("role", "courier");
 
-  useEffect(() => {
-    const fetchCouriers = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("role", "courier");
+  return data;
+}
 
-      if (data) setCouriers(data);
-    };
-    fetchCouriers();
-  }, []);
+export default async function CourierList() {
+  const couriers = await getCouriers();
 
   return (
     <div>
       <h2 className="text-xl font-semibold mb-2">Couriers</h2>
       <ul className="list-disc pl-5">
-        {couriers.map((courier: any) => (
+        {couriers?.map((courier: any) => (
           <li key={courier.id}>
             {courier.name} ({courier.phone})
           </li>
