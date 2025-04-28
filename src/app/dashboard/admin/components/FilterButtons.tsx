@@ -10,16 +10,15 @@ interface FilterButtonsProps {
 }
 
 const FilterButtons: React.FC<FilterButtonsProps> = ({ initialFilter, onFilterChange }) => {
-  // Use local state to manage the visual selection of the buttons
   const [activeFilter, setActiveFilter] = useState<FilterType>(initialFilter);
 
   const handleFilterClick = (newFilter: FilterType) => {
-    setActiveFilter(newFilter); // Update visual state
-    onFilterChange(newFilter); // Call the handler passed from the parent
+    setActiveFilter(newFilter); 
+    onFilterChange(newFilter); 
   };
 
   return (
-    <div className="flex space-x-2 flex-wrap mb-4"> {/* Add margin-bottom */} 
+    <div className="flex space-x-2 flex-wrap mb-4"> 
       <button 
           onClick={() => handleFilterClick('all')}
           className={`px-3 py-1 rounded-md text-sm ${

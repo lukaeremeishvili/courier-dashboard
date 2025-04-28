@@ -1,5 +1,3 @@
-'use client'
-
 import React from 'react';
 import { User } from '@/interfaces/user.interface'; // Adjust path if needed
 
