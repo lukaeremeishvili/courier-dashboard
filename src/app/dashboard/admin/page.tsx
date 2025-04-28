@@ -9,8 +9,13 @@ import { User } from '@/interfaces/user.interface'
 
 // Import Admin components
 import UserTable from './components/UserTable' // Assuming UserTable takes a users prop
+import AdminPageClient from './components/AdminPageClient' // Now only for actions
+import AdminInfoCard from './components/AdminInfoCard' // Import the new component
+import FilterButtons from './components/FilterButtons' // Import the new FilterButtons component
 // import CourierList from './components/CourierList' // For later use
 // import TaskModal from './components/TaskModal' // For later use
+
+type FilterType = 'all' | 'user' | 'courier'; // Define filter type
 
 const AdminDashboardPage = () => {
   const { user, loading: authLoading } = useAuth() 
@@ -18,26 +23,37 @@ const AdminDashboardPage = () => {
   // tasks state removed
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentFilter, setCurrentFilter] = useState<FilterType>('all'); // Add state for filter
 
+  // Fetch data when user/auth state changes or filter changes
   useEffect(() => {
     if (!authLoading && user?.role === 'admin') {
-      fetchInitialData()
+      fetchFilteredData(currentFilter) // Fetch data with the current filter
     } else if (!authLoading && user?.role !== 'admin') {
         setError('Unauthorized access.')
         setLoading(false)
     }
-  }, [user, authLoading])
+    // Dependency array includes currentFilter now
+  }, [user, authLoading, currentFilter]) 
 
-  const fetchInitialData = async () => {
+  // Modified function to fetch data based on filter
+  const fetchFilteredData = async (filter: FilterType) => {
     setLoading(true)
     setError(null)
     try {
-      // Fetch first 10 users (example, increased limit)
-      const { data: usersData, error: usersError } = await supabase
+      let query = supabase
         .from('users')
         .select('*')
+        .neq('role', 'admin') // Add this line to exclude admins always
         .limit(10) // Example: show more users in the table
         .order('created_at', { ascending: false })
+
+      // Apply specific role filter if not 'all'
+      if (filter !== 'all') {
+        query = query.eq('role', filter);
+      }
+
+      const { data: usersData, error: usersError } = await query;
 
       if (usersError) throw usersError
       setUsers(usersData || [])
@@ -51,6 +67,11 @@ const AdminDashboardPage = () => {
       setLoading(false)
     }
   }
+
+  // Callback function to handle filter changes from AdminPageClient
+  const handleFilterChange = (newFilter: FilterType) => {
+    setCurrentFilter(newFilter); // Update state, which triggers useEffect
+  };
 
   // Render loading state
   if (authLoading || loading) {
@@ -82,37 +103,37 @@ const AdminDashboardPage = () => {
   // Main dashboard content
   return (
     <div className="min-h-screen bg-gray-100 p-8">
-      <header className="flex justify-between items-center mb-8">
+      <header className="flex flex-wrap justify-between items-center mb-8 gap-4"> 
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <LogoutButton />
+        {/* AdminPageClient now only contains actions */} 
+        {user && (
+          <AdminPageClient 
+            // initialFilter={currentFilter} // REMOVED
+            user={user} 
+            // onFilterChange={handleFilterChange} // REMOVED
+          />
+        )}
       </header>
 
-      {/* Main content area - can use grid or flex */}
+      {/* Display Admin Info Card */}
+      <AdminInfoCard adminUser={user} /> 
+
+      {/* Main content area */}
       <div className="space-y-8">
-        {/* Users Section - Now using UserTable component */}
         <section className="bg-white p-6 rounded-lg shadow">
-          <div className="flex justify-between items-center mb-4">
-             <h2 className="text-xl font-semibold">User Management</h2>
-             {/* Add button for navigating to full user list or adding user later */}
-             {/* <Link href="/dashboard/admin/users" className="text-indigo-600 hover:underline">View All</Link> */}
-          </div>
-          <UserTable users={users} /> 
+           <div className="flex justify-between items-center mb-4">
+             <h2 className="text-xl font-semibold">User Management</h2> 
+             {/* Filter buttons will be rendered below */}
+           </div>
+           {/* Render Filter Buttons here */}
+           <FilterButtons 
+              initialFilter={currentFilter} 
+              onFilterChange={handleFilterChange} 
+            />
+           <UserTable users={users} /> 
         </section>
 
-        {/* Removed Tasks Section */}
-
-        {/* Placeholder for other sections like Courier Management, Task Assignment etc. */}
-         {/* 
-         <section className="bg-white p-6 rounded-lg shadow">
-           <h2 className="text-xl font-semibold mb-4">Courier Management</h2>
-           <CourierList couriers={users.filter(u => u.role === 'courier')} /> 
-         </section>
-
-         <section className="bg-white p-6 rounded-lg shadow">
-           <h2 className="text-xl font-semibold mb-4">Assign Task</h2>
-           <button>Assign New Task</button> // This would open TaskModal
-         </section>
-         */}
+        {/* Other sections placeholder */}
       </div>
     </div>
   )
