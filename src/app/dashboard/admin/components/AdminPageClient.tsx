@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import LogoutButton from "@/components/buttons/LogoutBtn";
-
 import { User } from "@/interfaces/user.interface";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AdminPageClientProps {
   user: User;
@@ -12,6 +12,7 @@ interface AdminPageClientProps {
 
 const AdminPageClient: React.FC<AdminPageClientProps> = ({ user }) => {
   const router = useRouter();
+  const { handleLogout } = useAuth();
 
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -37,7 +38,9 @@ const AdminPageClient: React.FC<AdminPageClientProps> = ({ user }) => {
             errorData.message || `HTTP error! status: ${response.status}`
           );
         }
-
+        
+        handleLogout();
+        
         alert("Account deleted successfully. Signing out.");
 
         router.push("/login");
@@ -51,6 +54,7 @@ const AdminPageClient: React.FC<AdminPageClientProps> = ({ user }) => {
       }
     }
   };
+  
 
   return (
     <div className="flex items-center space-x-4">
