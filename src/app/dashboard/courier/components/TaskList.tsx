@@ -4,7 +4,7 @@ async function getTasks() {
   const { data } = await supabase
     .from("tasks")
     .select("*")
-    .eq("assigned_to", "courier_id"); // შეცვალე საჭირო ID-თ
+    .eq("assigned_to", "courier_id"); 
 
   return data;
 }
